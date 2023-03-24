@@ -16,7 +16,7 @@ async function run() {
   const GetSceneListRequest = root.lookupType('stage.v1.GetSceneListRequest');
   GetSceneListResponse = root.lookupType('stage.v1.GetSceneListResponse');
 
-  // Test GetScene request
+
   const GetSceneRequest = root.lookupType('stage.v1.GetSceneRequest');
   GetSceneResponse = root.lookupType('stage.v1.GetSceneResponse');
 
@@ -59,7 +59,7 @@ async function run() {
 
   await sendRequest(rpcMessageSetScene);
 
-  // Example: Sending a GetSceneList request
+
   const getSceneListRequest = GetSceneListRequest.create();
   const rpcMessage = RpcMessage.create({
     type: RpcType.RPC_TYPE_REQUEST,

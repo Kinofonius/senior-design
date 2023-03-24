@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package example;
+
+message userpackage {
+  string name = 1;
+  string email = 2;
+}

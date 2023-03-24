@@ -74,7 +74,7 @@ async function run() {
       case 'GetScene':
           const { scene } = GetSceneRequest.decode(message.body);
           response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE
+            type: RpcType.values.RPC_TYPE_RESPONSE, 
             id: message.id,
             method: message.method,
             body: GetSceneResponse.encode({
@@ -91,7 +91,7 @@ async function run() {
           const { uuid, scene: sceneData } = SetSceneRequest.decode(message.body);
           if (sceneData.external) {
             response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE_ERROR
+              type: RpcType.values.RPC_TYPE_RESPONSE, 
               id: message.id,
               method: message.method,
               body: Buffer.from('Cannot change external scenes'),
@@ -99,7 +99,7 @@ async function run() {
           } else {
             state = sceneData.stage;
             response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE
+              type: RpcType.values.RPC_TYPE_RESPONSE, 
               id: message.id,
               method: message.method,
               body: SetSceneResponse.encode({
@@ -115,7 +115,7 @@ async function run() {
           break;
       case 'GetCurrentScene':
           response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE
+            type: RpcType.values.RPC_TYPE_RESPONSE, 
             id: message.id,
             method: message.method,
             body: GetCurrentSceneResponse.encode({
@@ -134,14 +134,14 @@ async function run() {
           const targetFixtureIndex = targetScene.fixtures.findIndex((f) => f.id === fixture.id);
           if (targetFixtureIndex === -1) {
             response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE_ERROR
+              type: RpcType.values.RPC_TYPE_RESPONSE, 
               id: message.id,
               method: message.method,
               body: Buffer.from(`Fixture with ID ${fixture.id} not found in scene ${sceneId}`),
             });
           } else if (targetScene.external) {
             response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE_ERROR
+              type: RpcType.values.RPC_TYPE_RESPONSE, 
               id: message.id,
               method: message.method,
               body: Buffer.from('Cannot modify fixtures in external scenes'),
@@ -155,7 +155,7 @@ async function run() {
             });
             targetScene.fixtures[targetFixtureIndex] = newFixture;
             response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE
+              type: RpcType.values.RPC_TYPE_RESPONSE, 
               id: message.id,
               method: message.method,
               body: SetFixtureResponse.encode({
@@ -166,7 +166,7 @@ async function run() {
           break;
       default:
           response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, // RPC_TYPE_RESPONSE_ERROR
+            type: RpcType.values.RPC_TYPE_RESPONSE, 
             id: message.id,
             method: message.method,
             body: Buffer.from(`Unknown method ${message.method}`),

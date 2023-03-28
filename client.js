@@ -1,114 +1,128 @@
-const { load } = require('protobufjs');
 const axios = require('axios');
+const { loadSync } = require('protobufjs');
 
-const SERVER_URL = 'http://localhost:3000/rpc';
-
-let RpcMessage;
-let RpcType;
-let GetSceneListResponse;
-let GetSceneResponse;
-let SetSceneResponse;
-
-async function run() {
-  const root = await load('stage.proto');
-  RpcMessage = root.lookupType('stage.v1.RpcMessage');
-  RpcType = root.lookupEnum('stage.v1.RpcType');
-  const GetSceneListRequest = root.lookupType('stage.v1.GetSceneListRequest');
-  GetSceneListResponse = root.lookupType('stage.v1.GetSceneListResponse');
-
-
-  const GetSceneRequest = root.lookupType('stage.v1.GetSceneRequest');
-  GetSceneResponse = root.lookupType('stage.v1.GetSceneResponse');
-
-  const getSceneRequest = GetSceneRequest.create({ scene: 'scene-id' });
-  const rpcMessageGetScene = RpcMessage.create({
-    type: RpcType.RPC_TYPE_REQUEST,
-    id: 2,
-    method: 'GetScene',
-    body: GetSceneRequest.encode(getSceneRequest).finish(),
-  });
-
-  await sendRequest(rpcMessageGetScene);
-
-  // Test SetScene request
-  const SetSceneRequest = root.lookupType('stage.v1.SetSceneRequest');
-  SetSceneResponse = root.lookupType('stage.v1.SetSceneResponse');
-
-  const setSceneRequest = SetSceneRequest.create({
-    uuid: 'new-scene-id',
-    scene: {
-      name: 'New Scene',
-      external: false,
-      stage: {
-        fixtures: [
-          {
-            id: 1,
-            channels: Uint8Array.from([0, 0, 255, 255, 255, 255]),
-          },
-        ],
-      },
-    },
-  });
-
-  const rpcMessageSetScene = RpcMessage.create({
-    type: RpcType.RPC_TYPE_REQUEST,
-    id: 3,
-    method: 'SetScene',
-    body: SetSceneRequest.encode(setSceneRequest).finish(),
-  });
-
-  await sendRequest(rpcMessageSetScene);
-
-
-  const getSceneListRequest = GetSceneListRequest.create();
-  const rpcMessage = RpcMessage.create({
-    type: RpcType.RPC_TYPE_REQUEST,
-    id: 1,
-    method: 'GetSceneList',
-    body: GetSceneListRequest.encode(getSceneListRequest).finish(),
-  });
-
-  await sendRequest(rpcMessage);
+function loadProtoTypes() {
+  const root = loadSync('stage.proto');
+  return {
+    GetSceneListResponse: root.lookupType('stage.v1.GetSceneListResponse'),
+    GetSceneResponse: root.lookupType('stage.v1.GetSceneResponse'),
+    GetCurrentSceneResponse: root.lookupType('stage.v1.GetCurrentSceneResponse'),
+    SetSceneRequest: root.lookupType('stage.v1.SetSceneRequest'),
+    SetSceneResponse: root.lookupType('stage.v1.SetSceneResponse'),
+    SetFixtureRequest: root.lookupType('stage.v1.SetFixtureRequest'),
+    SetFixtureResponse: root.lookupType('stage.v1.SetFixtureResponse'),
+  };
 }
 
-async function sendRequest(rpcMessage) {
+const protoTypes = loadProtoTypes();
+
+async function testEndpoints() {
+  const serverUrl = 'http://192.168.31.204:3000';
+
   try {
-    const encodedRpcMessage = RpcMessage.encode(rpcMessage).finish();
-    const response = await axios.post(SERVER_URL, encodedRpcMessage, {
+    // Test /get-scene-list endpoint
+    const getSceneListResponse = await axios.get(`${serverUrl}/get-scene-list`, {
       responseType: 'arraybuffer',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
     });
+    const getSceneListResponseData = protoTypes.GetSceneListResponse.decode(
+      getSceneListResponse.data
+    );
+    console.log('get-scene-list response:', getSceneListResponseData);
 
-    const responseData = new Uint8Array(response.data);
-    const responseRpcMessage = RpcMessage.decode(responseData);
-    console.log('responseRpcMessage:', responseRpcMessage);
+    // Test /get-scene/:sceneId endpoint
+    const getSceneResponse = await axios.get(`${serverUrl}/get-scene/2`, {
+      responseType: 'arraybuffer',
+    });
+    const getSceneResponseData = protoTypes.GetSceneResponse.decode(getSceneResponse.data);
+    console.log('get-scene response:', getSceneResponseData);
 
-    if (responseRpcMessage.type === RpcType.values.RPC_TYPE_RESPONSE) {
-      let responseBody;
-      switch (responseRpcMessage.method) {
-        case 'GetSceneList':
-          responseBody = responseRpcMessage.body.length ? GetSceneListResponse.decode(responseRpcMessage.body) : { scenes: [] };
-          break;
-        case 'GetScene':
-          responseBody = responseRpcMessage.body.length ? GetSceneResponse.decode(responseRpcMessage.body) : { scene: {} };
-          break;
-        case 'SetScene':
-          responseBody = responseRpcMessage.body.length ? SetSceneResponse.decode(responseRpcMessage.body) : { scene: {} };
-          break;
-        default:
-          throw new Error(`Unknown method ${responseRpcMessage.method}`);
-      }
-      console.log('Received response:', responseRpcMessage, 'with decoded body:', responseBody);
-    } else if (responseRpcMessage.type === RpcType.values.RPC_TYPE_RESPONSE_ERROR) {
-      console.error('Error response:', responseRpcMessage);
-    } else {
-      console.error('Unexpected response:', responseRpcMessage);
-    }
-  } catch (error) {
-    console.error('Error while sending request:', error);
-  }
+    // Test /get-current-scene endpoint
+    const getCurrentSceneResponse = await axios.get(`${serverUrl}/get-current-scene`, {
+      responseType: 'arraybuffer',
+    });
+    const getCurrentSceneResponseData = protoTypes.GetCurrentSceneResponse.decode(
+      getCurrentSceneResponse.data
+    );
+    console.log('get-current-scene response:', getCurrentSceneResponseData);
+
+    // Test /set-scene endpoint
+    const setSceneRequest = {
+      uuid: 1,
+      scene: {
+        name: 'New Scene',
+        external: false,
+        stage: {
+          fixtures: [
+            {
+              id: 1,
+              channels: [255, 255, 255, 0, 0, 0],
+            },
+            {
+              id: 2,
+              channels: [0, 255, 0, 255, 0, 0],
+            },
+            {
+              id: 3,
+              channels: [0, 0, 255, 0, 0, 255],
+            },
+          ],
+        },
+      },
+    };
+    const encodedSetSceneRequest = protoTypes.SetSceneRequest.encode(setSceneRequest).finish();
+    const setSceneResponse = await axios.post(`${serverUrl}/set-scene`, encodedSetSceneRequest, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      responseType: 'arraybuffer',
+    });
+    const setSceneResponseData = protoTypes.SetSceneResponse.decode(setSceneResponse.data);
+    console.log('set-scene response:', setSceneResponseData);
+
+    // Test /set-fixture endpoint
+    const setFixtureRequest = {
+      scene: 1,
+      fixture: {
+        id: 1,
+        channels: [255, 0, 0, 0, 0, 0],
+      },
+    };
+    const encodedSetFixtureRequest = protoTypes.SetFixtureRequest.encode(setFixtureRequest).finish();
+    const setFixtureResponse = await axios.post(`${serverUrl}/set-fixture`, encodedSetFixtureRequest, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      responseType: 'arraybuffer',
+    });
+    const setFixtureResponseData = protoTypes.SetFixtureResponse.decode(setFixtureResponse.data);
+    console.log('set-fixture response:', setFixtureResponseData);
+
+    // Test /set-scene endpoint with a scene that has a large number of fixtures
+const largeSetSceneRequest = {
+  uuid: 1,
+  scene: {
+    name: 'Large Scene',
+    external: false,
+    stage: {
+      fixtures: [],
+    },
+  },
+};
+
+for (let i = 0; i < 3; i++) {
+  largeSetSceneRequest.scene.stage.fixtures.push({
+    id: i,
+    channels: [255, 255, 255, 0, 0, 0],
+  });
 }
-
-run().catch((err) => console.log(err));
+const encodedLargeSetSceneRequest = protoTypes.SetSceneRequest.encode(largeSetSceneRequest).finish();
+const largeSetSceneStartTime = Date.now();
+const largeSetSceneResponse = await axios.post(`${serverUrl}/set-scene`, encodedLargeSetSceneRequest, {
+  headers: { 'Content-Type': 'application/octet-stream' },
+  responseType: 'arraybuffer',
+});
+const largeSetSceneResponseData = protoTypes.SetSceneResponse.decode(largeSetSceneResponse.data);
+const largeSetSceneEndTime = Date.now();
+console.log(`set-scene response time for large payload: ${largeSetSceneEndTime - largeSetSceneStartTime}ms`);
+console.log('large set-scene response:', largeSetSceneResponseData);
+}catch (error) {
+  console.error('Error:', error.message);
+}
+}
+testEndpoints();

@@ -1,5 +1,6 @@
 const express = require('express');
 const { loadSync } = require('protobufjs');
+const os = require('os');
 
 const app = express();
 const port = 3000;
@@ -30,6 +31,7 @@ async function run() {
 
   // Simulated data
   let state = {
+    currentSceneId: 1,
     fixtures: [
       {
         id: 1,
@@ -44,139 +46,152 @@ async function run() {
         channels: Uint8Array.from([0, 255, 0, 0, 0, 255]),
       },
     ],
+    scenes: [
+      {
+        name: 1,
+        id: 1,
+        external: false,
+        fixture: 1
+      },
+      {
+        name: 2,
+        id: 2,
+        external: false,
+        fixture: 2
+      },
+    ],
   };
-
   app.use(express.raw({ type: 'application/octet-stream' }));
 
-  app.post('/rpc', async (req, res) => {
-    const requestBuffer = req.body;
-    let response;
-    let message;
-  // Decode the incoming message based on its type
-  try {
-    message = RpcMessage.decode(requestBuffer);
-  } catch (error) {
-    console.error('Error while decoding RpcMessage:', error);
-    res.status(400).send('Error while decoding RpcMessage');
-  }
+app.get('/get-scene-list', async (req, res) => {
+  const response = GetSceneListResponse.encode({
+    scenes: state.scenes.map((scene) => scene.name.toString()),
+  }).finish();
 
-  switch (message.method) {
-    case 'GetSceneList':
-      response = RpcMessage.create({
-        type: RpcType.values.RPC_TYPE_RESPONSE,
-        id: message.id,
-        method: message.method,
-        body: GetSceneListResponse.encode({
-          scenes: [],
-        }).finish(),
-      });
-      break;
-      case 'GetScene':
-          const { scene } = GetSceneRequest.decode(message.body);
-          response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, 
-            id: message.id,
-            method: message.method,
-            body: GetSceneResponse.encode({
-              scene: {
-                id: 'scene-id',
-                name: 'Scene Name',
-                external: false,
-                stage: state,
-              },
-            }).finish(),
-          });
-          break;
-      case 'SetScene':
-          const { uuid, scene: sceneData } = SetSceneRequest.decode(message.body);
-          if (sceneData.external) {
-            response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, 
-              id: message.id,
-              method: message.method,
-              body: Buffer.from('Cannot change external scenes'),
-            });
-          } else {
-            state = sceneData.stage;
-            response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, 
-              id: message.id,
-              method: message.method,
-              body: SetSceneResponse.encode({
-                scene: {
-                  id: uuid,
-                  name: sceneData.name,
-                  external: sceneData.external,
-                  stage: state,
-                },
-              }).finish(),
-            });
-          }
-          break;
-      case 'GetCurrentScene':
-          response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, 
-            id: message.id,
-            method: message.method,
-            body: GetCurrentSceneResponse.encode({
-              scene: {
-                id: 'scene-id',
-                name: 'Scene Name',
-                external: false,
-                stage: state,
-              },
-            }).finish(),
-          });
-          break;
-      case 'SetFixture':
-          const { scene: sceneId, fixture } = SetFixtureRequest.decode(message.body);
-          const targetScene = state;
-          const targetFixtureIndex = targetScene.fixtures.findIndex((f) => f.id === fixture.id);
-          if (targetFixtureIndex === -1) {
-            response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, 
-              id: message.id,
-              method: message.method,
-              body: Buffer.from(`Fixture with ID ${fixture.id} not found in scene ${sceneId}`),
-            });
-          } else if (targetScene.external) {
-            response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, 
-              id: message.id,
-              method: message.method,
-              body: Buffer.from('Cannot modify fixtures in external scenes'),
-            });
-          } else {
-            const newFixture = Fixture.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE,
-              id: fixture.id,
-              method: message.method,
-              channels: fixture.channels,
-            });
-            targetScene.fixtures[targetFixtureIndex] = newFixture;
-            response = RpcMessage.create({
-              type: RpcType.values.RPC_TYPE_RESPONSE, 
-              id: message.id,
-              method: message.method,
-              body: SetFixtureResponse.encode({
-                fixture: newFixture,
-              }).finish(),
-            });
-          }
-          break;
-      default:
-          response = RpcMessage.create({
-            type: RpcType.values.RPC_TYPE_RESPONSE, 
-            id: message.id,
-            method: message.method,
-            body: Buffer.from(`Unknown method ${message.method}`),
-          });
-        }
-        
+  res.set('Content-Type', 'application/octet-stream');
+  res.send(response);
+});
+
+app.get('/get-scene/:sceneId', async (req, res) => {
+  const sceneId = parseInt(req.params.sceneId);
+  const scene = state.scenes.find((scene) => scene.id === sceneId);
+
+  if (scene) {
+    // console.log('scene.name type:', typeof scene.name); // Check the type of scene.name
+    // console.log('String(scene.name) type:', typeof String(scene.name)); // Check the type of String(scene.name)
+    const response = GetSceneResponse.encode({
+      scene: {
+        id: scene.id,
+        name: String(scene.name),
+        external: scene.external,
+        stage: {
+          fixtures: state.fixtures,
+        },
+      },
+    }).finish();
+
+    res.set('Content-Type', 'application/octet-stream');
+    res.send(response);
+  } else {
+    res.status(404).send('Scene not found');
+  }
+});
+  
+  app.get('/get-current-scene', async (req, res) => {
+    const currentScene = state.scenes.find((scene) => scene.id === state.currentSceneId);
+  
+    if (currentScene) {
+      const response = GetCurrentSceneResponse.encode({
+        scene: String(state.currentSceneId),
+      }).finish();
+  
+      res.set('Content-Type', 'application/octet-stream');
+      res.send(response);
+    } else {
+      res.status(404).send('Current scene not found');
+    }
+  });
+  
+  app.post('/set-scene', async (req, res) => {
+    const decodedRequest = SetSceneRequest.decode(req.body);
+    const { uuid, scene: sceneData } = decodedRequest;
+  
+    if (sceneData.external) {
+      res.status(400).send('Cannot change external scenes');
+    } else {
+      const sceneIndex = state.scenes.findIndex((scene) => scene.id === uuid);
+      // console.log((scene) => scene.id);
+      if (sceneIndex !== -1) {
+        state.scenes[sceneIndex] = {
+          id: uuid,
+          name: String(sceneData.name),
+          external: sceneData.external,
+          fixture: sceneData.fixture,
+        };
+  
+        const response = SetSceneResponse.encode({
+          scene: state.scenes[sceneIndex],
+        }).finish();
         res.set('Content-Type', 'application/octet-stream');
-        res.send(RpcMessage.encode(response).finish());
-        });
-        app.listen(port, () => {
-          console.log(`Server listening on port ${port}`);
-          });
+        res.send(response);
+      } else {
+        res.status(404).send(`Scene with ID ${uuid} not found`);
+      }
+    }
+  });
+
+  app.post('/set-fixture', async (req, res) => {
+    const decodedRequest = SetFixtureRequest.decode(req.body);
+    const { scene: sceneId, fixture } = decodedRequest;
+    const targetScene = state.scenes.find((scene) => scene.id === parseInt(sceneId));
+    // console.log(sceneId);
+    // console.log((scene) => scene.id);
+    if (!targetScene) {
+      res.status(404).send(`Scene with ID ${sceneId} not found`);
+      console.log('Scene with ID ${sceneId} not found');
+    } else if (targetScene.external) {
+      res.status(400).send('Cannot modify fixtures in external scenes');
+    } else {
+      const targetFixtureIndex = state.fixtures.findIndex((f) => f.id === fixture.id);
+  
+      if (targetFixtureIndex === -1) {
+        res.status(400).send(`Fixture with ID ${fixture.id} not found in scene ${sceneId}`);
+      } else {
+        const newFixture = {
+          id: fixture.id,
+          channels: fixture.channels,
+        };
+        console.log(fixture.channels);
+        state.fixtures[targetFixtureIndex] = newFixture;
+        const response = SetFixtureResponse.encode({
+          fixture: newFixture,
+        }).finish();
+        // console.log(newFixture);
+        res.set('Content-Type', 'application/octet-stream');
+        res.send(response);
+      }
+    }
+  });
+  
+
+
+  app.listen(port, '0.0.0.0', () => {
+    const localIP = getLocalIP();
+    console.log(`Server listening on ${localIP}:${port}`);
+  });
+  function getLocalIP() {
+    const interfaces = os.networkInterfaces();
+    for (const ifName in interfaces) {
+      const ifItems = interfaces[ifName];
+      for (const item of ifItems) {
+        if (!item.internal && item.family === 'IPv4') {
+          return item.address;
         }
+      }
+    }
+    return '127.0.0.1';
+  }
+  // app.listen(port, () => {
+  //   console.log(`Server listening on port ${port}`);
+  // });
+}

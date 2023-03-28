@@ -133,7 +133,7 @@ message SetFixtureRequest {
 message SetFixtureResponse {
   // The new description of the fixture.
   //Fixture fixture = 1;
-  string scene = 1;
+  unit32 scene = 1;
 }
 
 // The type of an RPC message being sent.

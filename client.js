@@ -12,6 +12,14 @@ function loadProtoTypes() {
     SetSceneResponse: root.lookupType('stage.v1.SetSceneResponse'),
     SetFixtureRequest: root.lookupType('stage.v1.SetFixtureRequest'),
     SetFixtureResponse: root.lookupType('stage.v1.SetFixtureResponse'),
+    CreateSceneRequest: root.lookupType('stage.v1.CreateSceneRequest'),
+    CreateSceneResponse: root.lookupType('stage.v1.CreateSceneResponse'),
+    DeleteSceneRequest: root.lookupType('stage.v1.DeleteSceneRequest'),
+    DeleteSceneResponse: root.lookupType('stage.v1.DeleteSceneResponse'),
+    CreateFixtureRequest: root.lookupType('stage.v1.CreateFixtureRequest'),
+    CreateFixtureResponse: root.lookupType('stage.v1.CreateFixtureResponse'),
+    DeleteFixtureRequest: root.lookupType('stage.v1.DeleteFixtureRequest'),
+    DeleteFixtureResponse: root.lookupType('stage.v1.DeleteFixtureResponse'),
   };
 }
 
@@ -35,7 +43,7 @@ async function testEndpoints() {
       responseType: 'arraybuffer',
     });
     const getSceneResponseData = protoTypes.GetSceneResponse.decode(getSceneResponse.data);
-    console.log('get-scene response:', getSceneResponseData);
+    console.log('get-scene response:', JSON.stringify(getSceneResponseData, null, 2));
 
     // Test /get-current-scene endpoint
     const getCurrentSceneResponse = await axios.get(`${serverUrl}/get-current-scene`, {
@@ -128,7 +136,65 @@ console.log('large set-scene response:', largeSetSceneResponseData);
       responseType: 'arraybuffer',
     });
     const getSceneResponseData2 = protoTypes.GetSceneResponse.decode(getSceneResponse2.data);
-    console.log('get-scene response:', getSceneResponseData2);
+    console.log('get-scene response:', JSON.stringify(getSceneResponseData2, null, 2));
+// Test /create-scene endpoint
+const createSceneRequest = {
+  scene: {
+    name: 'New Scene',
+    external: false,
+    stage: {
+      fixtures: [255, 255, 255, 0, 0, 0],
+    },
+  },
+};
+const encodedCreateSceneRequest = protoTypes.CreateSceneRequest.encode(createSceneRequest).finish();
+const createSceneResponse = await axios.post(`${serverUrl}/create-scene`, encodedCreateSceneRequest, {
+  headers: { 'Content-Type': 'application/octet-stream' },
+  responseType: 'arraybuffer',
+});
+const createSceneResponseData = protoTypes.CreateSceneResponse.decode(createSceneResponse.data);
+console.log('create-scene response:', createSceneResponseData);
+
+// Test /delete-scene endpoint
+// const deleteSceneRequest = {
+//   uuid: 1,
+// };
+// const encodedDeleteSceneRequest = protoTypes.DeleteSceneRequest.encode(deleteSceneRequest).finish();
+// const deleteSceneResponse = await axios.post(`${serverUrl}/delete-scene`, encodedDeleteSceneRequest, {
+//   headers: { 'Content-Type': 'application/octet-stream' },
+//   responseType: 'arraybuffer',
+// });
+// const deleteSceneResponseData = protoTypes.DeleteSceneResponse.decode(deleteSceneResponse.data);
+// console.log('delete-scene response:', deleteSceneResponseData);
+// Test /create-fixture endpoint
+const createFixtureRequest = {
+  scene: 1,
+  fixture: {
+    id: 1,
+    channels: [255, 0, 0, 0, 0, 0],
+  },
+};
+
+const encodedCreateFixtureRequest = protoTypes.CreateFixtureRequest.encode(createFixtureRequest).finish();
+const createFixtureResponse = await axios.post(`${serverUrl}/create-fixture`, encodedCreateFixtureRequest, {
+  headers: { 'Content-Type': 'application/octet-stream' },
+  responseType: 'arraybuffer',
+});
+const createFixtureResponseData = protoTypes.CreateFixtureResponse.decode(createFixtureResponse.data);
+console.log('create-fixture response:', createFixtureResponseData);
+
+// Test /delete-fixture endpoint
+const deleteFixtureRequest = {
+  id: 1,
+};
+
+const encodedDeleteFixtureRequest = protoTypes.DeleteFixtureRequest.encode(deleteFixtureRequest).finish();
+const deleteFixtureResponse = await axios.post(`${serverUrl}/delete-fixture`, encodedDeleteFixtureRequest, {
+  headers: { 'Content-Type': 'application/octet-stream' },
+  responseType: 'arraybuffer',
+});
+const deleteFixtureResponseData = protoTypes.DeleteFixtureResponse.decode(deleteFixtureResponse.data);
+console.log('delete-fixture response:', deleteFixtureResponseData);
 
 }catch (error) {
   console.error('Error:', error.message);

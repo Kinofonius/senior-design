@@ -28,7 +28,14 @@ async function run() {
   const SetFixtureResponse = root.lookupType('stage.v1.SetFixtureResponse');
   const RpcMessage = root.lookupType('stage.v1.RpcMessage');
   const RpcType = root.lookupEnum('stage.v1.RpcType');
-
+  const CreateSceneRequest = root.lookupType('stage.v1.CreateSceneRequest');
+  const CreateSceneResponse = root.lookupType('stage.v1.CreateSceneResponse');
+  const DeleteSceneRequest = root.lookupType('stage.v1.DeleteSceneRequest');
+  const DeleteSceneResponse = root.lookupType('stage.v1.DeleteSceneResponse');
+  const CreateFixtureRequest = root.lookupType('stage.v1.CreateFixtureRequest');
+  const CreateFixtureResponse = root.lookupType('stage.v1.CreateFixtureResponse');
+  const DeleteFixtureRequest= root.lookupType('stage.v1.DeleteFixtureRequest');
+  const DeleteFixtureResponse= root.lookupType('stage.v1.DeleteFixtureResponse');
   // Simulated data
   let state = {
     currentSceneId: 1,
@@ -162,7 +169,7 @@ app.get('/get-scene/:sceneId', async (req, res) => {
           id: fixture.id,
           channels: fixture.channels,
         };
-        console.log(fixture.channels);
+        //console.log(fixture.channels);
         state.fixtures[targetFixtureIndex] = newFixture;
         const response = SetFixtureResponse.encode({
           fixture: newFixture,
@@ -174,7 +181,72 @@ app.get('/get-scene/:sceneId', async (req, res) => {
     }
   });
   
+// Create a new scene
+app.post('/create-scene', async (req, res) => {
+  const decodedRequest = CreateSceneRequest.decode(req.body);
+  const sceneData = decodedRequest.scene;
+  const newSceneId = Math.max(...state.scenes.map(scene => scene.id)) + 1;
 
+  const newScene = {
+    ...sceneData,
+    id: newSceneId,
+  };
+  state.scenes.push(newScene);
+
+  const response = CreateSceneResponse.encode({ scene: newScene }).finish();
+  res.set('Content-Type', 'application/octet-stream');
+  res.send(response);
+});
+
+// Delete a scene
+app.post('/delete-scene', async (req, res) => {
+  const decodedRequest = DeleteSceneRequest.decode(req.body);
+  const { uuid } = decodedRequest;
+
+  const sceneIndex = state.scenes.findIndex(scene => scene.id === uuid);
+  if (sceneIndex !== -1) {
+    state.scenes.splice(sceneIndex, 1);
+    const response = DeleteSceneResponse.encode({ uuid }).finish();
+    res.set('Content-Type', 'application/octet-stream');
+    res.send(response);
+  } else {
+    res.status(404).send(`Scene with ID ${uuid} not found`);
+  }
+});
+// Create a new fixture
+app.post('/create-fixture', async (req, res) => {
+  const decodedRequest = CreateFixtureRequest.decode(req.body);
+  const fixtureData = decodedRequest.fixture;
+  const newFixtureId = Math.max(...state.fixtures.map(fixture => fixture.id)) + 1;
+
+  const newFixture = {
+    ...fixtureData,
+    id: newFixtureId,
+  };
+  state.fixtures.push(newFixture);
+
+  const response = CreateFixtureResponse.encode({ fixture: newFixture }).finish();
+  res.set('Content-Type', 'application/octet-stream');
+  res.send(response);
+});
+
+// Delete a fixture
+app.post('/delete-fixture', async (req, res) => {
+  const decodedRequest = DeleteFixtureRequest.decode(req.body);
+  const { id } = decodedRequest;
+  const fixtureIndex = state.fixtures.findIndex(fixture => fixture.id === id);
+
+  if (fixtureIndex !== -1) {
+    state.fixtures.splice(fixtureIndex, 1);
+    const response = DeleteFixtureResponse.encode({ id }).finish();
+    res.set('Content-Type', 'application/octet-stream');
+    res.send(response);
+  } else {
+    res.status(404).send(`Fixture with ID ${id} not found`);
+    res.send(response);
+    console.log(`Fixture with ID ${id} not found`);
+  }
+});
 
   app.listen(port, '0.0.0.0', () => {
     const localIP = getLocalIP();

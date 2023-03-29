@@ -52,6 +52,14 @@ service ControlService {
   // Set a fixture in a scene. Returns the new state of the fixture. Requests
   // with the wrong number of channels or for external scenes throw and error.
   rpc SetFixture(SetFixtureRequest) returns (SetFixtureResponse);
+  // Add a new scene. Returns the new state of the scene.
+  rpc CreateScene(CreateSceneRequest) returns (CreateSceneResponse);
+  // Delete a scene. Returns the deleted scene ID.
+  rpc DeleteScene(DeleteSceneRequest) returns (DeleteSceneResponse);
+  // Add a new fixture. Returns the new state of the fixture.
+  rpc CreateFixture(CreateFixtureRequest) returns (CreateFixtureResponse);
+  // Delete a fixture. Returns the deleted fixture ID.
+  rpc DeleteFixture(DeleteFixtureRequest) returns (DeleteFixtureResponse);
 }
 
 // A request for the IDs of all scenes.
@@ -124,7 +132,7 @@ message GetStateResponse {
 // A request to change a fixture in a scene.
 message SetFixtureRequest {
   // The UUID of the scene the fixture should be modified in.
-  Scene scene = 1;
+  int32 scene = 1;
   // The desired state of the fixture.
   Fixture fixture = 2;
 }
@@ -134,6 +142,37 @@ message SetFixtureResponse {
   // The new description of the fixture.
   Fixture fixture = 1;
 }
+
+// A request to add a new scene.
+message CreateSceneRequest {
+  // The desired state of the scene.
+  Scene scene = 1;
+}
+
+// A response containing the new scene.
+message CreateSceneResponse {
+  // The new description of the scene.
+  Scene scene = 1;
+}
+
+// A request to delete a scene.
+message DeleteSceneRequest {
+  // The UUID of the scene to delete.
+  int32 uuid = 1;
+}
+
+// A response containing the deleted scene ID.
+message DeleteSceneResponse {
+  // The UUID of the deleted scene.
+  int32 uuid = 1;
+}
+
+// A request to add a new fixture.
+message CreateFixtureRequest {
+  // The desired state of the fixture.
+  Fixture fixture = 1;
+}
+
 
 // The type of an RPC message being sent.
 enum RpcType {

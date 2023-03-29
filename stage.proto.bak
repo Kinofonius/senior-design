@@ -14,8 +14,7 @@ message Fixture {
 
 // A description of the whole stage.
 message Stage {
-  // The states of each fixture on the stage
-  repeated Fixture fixtures = 1;
+  repeated uint32 fixtures = 1;
 }
 
 // A description of a scene.
@@ -60,6 +59,8 @@ service ControlService {
   rpc CreateFixture(CreateFixtureRequest) returns (CreateFixtureResponse);
   // Delete a fixture. Returns the deleted fixture ID.
   rpc DeleteFixture(DeleteFixtureRequest) returns (DeleteFixtureResponse);
+  
+  rpc UpdateCurrentScene(UpdateCurrentSceneRequest) returns (UpdateCurrentSceneResponse);
 }
 
 // A request for the IDs of all scenes.
@@ -68,7 +69,7 @@ message GetSceneListRequest {}
 // A response containing the IDs of all scenes.
 message GetSceneListResponse {
   // A list of UUIDs.
-  repeated string scenes = 1;
+  repeated Scene scenes = 1;
 }
 
 // A request for description of a scene.
@@ -173,7 +174,31 @@ message CreateFixtureRequest {
   Fixture fixture = 1;
 }
 
+// A response containing the new fixture.
+message CreateFixtureResponse {
+  // The new description of the fixture.
+  Fixture fixture = 1;
+}
 
+// A request to delete a fixture.
+message DeleteFixtureRequest {
+  // The ID of the fixture to delete.
+  int32 id = 1;
+}
+
+// A response containing the deleted fixture ID.
+message DeleteFixtureResponse {
+  // The ID of the deleted fixture.
+  int32 id = 1;
+}
+
+message UpdateCurrentSceneRequest {
+  uint32 newSceneId = 1;
+}
+
+message UpdateCurrentSceneResponse {
+  Scene scene = 1;
+}
 // The type of an RPC message being sent.
 enum RpcType {
   // An unfinished message. Messages of this type throw an error.

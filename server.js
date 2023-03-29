@@ -143,10 +143,10 @@ app.get('/get-scene/:sceneId', async (req, res) => {
   app.post('/set-fixture', async (req, res) => {
     const decodedRequest = SetFixtureRequest.decode(req.body);
     const { scene: sceneId, fixture } = decodedRequest;
-    console.log(fixture);
+    // console.log(fixture);
     const targetScene = state.scenes.find((scene) => scene.id === sceneId);
-    console.log(sceneId);
-    console.log((scene) => scene.id);
+    // console.log(sceneId);
+    // console.log((scene) => scene.id);
     if (!targetScene) {
       res.status(404).send(`Scene with ID ${sceneId} not found`);
       console.log('Scene with ID ${sceneId} not found');

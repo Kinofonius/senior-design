@@ -124,7 +124,7 @@ message GetStateResponse {
 // A request to change a fixture in a scene.
 message SetFixtureRequest {
   // The UUID of the scene the fixture should be modified in.
-  string scene = 1;
+  int32 scene = 1;
   // The desired state of the fixture.
   Fixture fixture = 2;
 }
@@ -132,8 +132,7 @@ message SetFixtureRequest {
 // A response containing the state of the stage.
 message SetFixtureResponse {
   // The new description of the fixture.
-  //Fixture fixture = 1;
-  string scene = 1;
+  Fixture fixture = 1;
 }
 
 // The type of an RPC message being sent.

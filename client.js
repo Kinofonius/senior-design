@@ -6,6 +6,7 @@ function loadProtoTypes() {
   return {
     GetSceneListResponse: root.lookupType('stage.v1.GetSceneListResponse'),
     GetSceneResponse: root.lookupType('stage.v1.GetSceneResponse'),
+    GetSceneResponse2: root.lookupType('stage.v1.GetSceneResponse'),
     GetCurrentSceneResponse: root.lookupType('stage.v1.GetCurrentSceneResponse'),
     SetSceneRequest: root.lookupType('stage.v1.SetSceneRequest'),
     SetSceneResponse: root.lookupType('stage.v1.SetSceneResponse'),
@@ -85,6 +86,7 @@ async function testEndpoints() {
         channels: [255, 0, 0, 0, 0, 0],
       },
     };
+
     const encodedSetFixtureRequest = protoTypes.SetFixtureRequest.encode(setFixtureRequest).finish();
     const setFixtureResponse = await axios.post(`${serverUrl}/set-fixture`, encodedSetFixtureRequest, {
       headers: { 'Content-Type': 'application/octet-stream' },
@@ -105,7 +107,7 @@ const largeSetSceneRequest = {
   },
 };
 
-for (let i = 0; i < 3; i++) {
+for (let i = 0; i < 1000; i++) {
   largeSetSceneRequest.scene.stage.fixtures.push({
     id: i,
     channels: [255, 255, 255, 0, 0, 0],
@@ -121,6 +123,13 @@ const largeSetSceneResponseData = protoTypes.SetSceneResponse.decode(largeSetSce
 const largeSetSceneEndTime = Date.now();
 console.log(`set-scene response time for large payload: ${largeSetSceneEndTime - largeSetSceneStartTime}ms`);
 console.log('large set-scene response:', largeSetSceneResponseData);
+    // Test /get-scene/:sceneId endpoint
+    const getSceneResponse2 = await axios.get(`${serverUrl}/get-scene/1`, {
+      responseType: 'arraybuffer',
+    });
+    const getSceneResponseData2 = protoTypes.GetSceneResponse.decode(getSceneResponse2.data);
+    console.log('get-scene response:', getSceneResponseData2);
+
 }catch (error) {
   console.error('Error:', error.message);
 }

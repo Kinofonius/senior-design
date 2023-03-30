@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+// A UUID representing a scene,
+message SceneId {
+  string id = 1;
+}
+
+// A lighting preset.
+message Scene {
+  // The id of the scene.
+  string id = 1;
+  // The name of the scene.
+  optional string name = 2;
+  // The values of the scene.
+  optional bytes universe = 3;
+  // The transition time in milliseconds.
+  optional uint32 delay = 4;
+}
+
+// An event representing a change in a scene.
+message SceneUpdateEvent {
+  // The updated scene.
+  Scene scene = 1;
+}
+
+// The type of a message being sent.
+enum MessageType {
+  // An unfinished message. Messages of this type throw an error.
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  // An event sent between the client and server.
+  MESSAGE_TYPE_EVENT = 1;
+  // A request sent by the client.
+  MESSAGE_TYPE_REQUEST = 2;
+}
+
+// Underlying message format that is sent over the socket.
+message Message {
+  // The type of the message being sent.
+  MessageType type = 1;
+  // An unsigned integer representing which request a response is associated
+  // with. These should be generated sequentially to minimize the chance of a
+  // collision.
+  optional uint32 id = 2;
+  // The name of the event or RPC function the message is associated with.
+  optional string name = 3;
+  // Protobuf-encoded message of the appropriate type for the event or method.
+  // UTF-8 encoded error text in the case of an error.
+  optional bytes body = 4;
+}

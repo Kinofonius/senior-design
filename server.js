@@ -2,6 +2,7 @@ const express = require('express');
 const { loadSync } = require('protobufjs');
 const os = require('os');
 const { MongoClient } = require('mongodb');
+const WebSocket = require('ws');
 
 const app = express();
 const port = 3000;
@@ -10,6 +11,14 @@ const dbName = 'stageControl';
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 run().catch((err) => console.log(err));
 
+function loadBackendProtoTypes() {
+  const root = loadSync('backend.proto');
+  return {
+    SceneId: root.lookupType('SceneId'),
+    SceneUpdateEvent: root.lookupType('SceneUpdateEvent'),
+    Message: root.lookupType('Message'),
+  }
+}
 
 function loadProtoTypes() {
   const root = loadSync('stage.proto');
@@ -62,7 +71,53 @@ async function run() {
   const fixturesCollection = db.collection('fixtures');
   const scenesCollection = db.collection('scenes');
   const protoTypes = loadProtoTypes();
+  const backendTypes = loadBackendProtoTypes();
   app.use(express.raw({ type: 'application/octet-stream' }));
+
+  const backend = new WebSocket('ws://localhost:8080/api/ws');
+  backend.on('error', console.log);
+
+  function sendBackendMessage(message) {
+    if (backend.readyState !== 1) {
+      console.log('No connection to backend!');
+      return;
+    }
+
+    try {
+      backend.send(backendTypes.Message.encode(message).finish());
+    } catch (_) {
+      console.log('Failed to send backend message');
+    }
+  }
+
+  function sendSceneUpdate(id, universe) {
+    const rawScene = {
+      id: String(id),
+      universe,
+    };
+    sendBackendMessage({
+      type: 1,
+      name: 'SceneUpdate',
+      body: backendTypes.SceneUpdateEvent.encode({ scene: rawScene }).finish(),
+    });
+  }
+
+  function sendSceneSwitch(id) {
+    sendBackendMessage({
+      type: 2,
+      id: 0,
+      name: 'SetCurrentScene',
+      body: backendTypes.SceneId.encode({ id: String(id) }).finish(),
+    });
+  }
+
+  async function buildSceneData(id) {
+    let universe = new Uint8Array(512);
+
+    // todo: fetch scene from database and build DMX512 universe
+    
+    return universe;
+  }
 
 // Get scene list
 app.get('/get-scene-list', async (req, res) => {
@@ -121,6 +176,9 @@ async function setCurrentSceneId(db, newSceneId) {
       { $set: { value: newSceneId } }
     );
   }
+
+  sendSceneSwitch(newSceneId);
+  sendSceneUpdate(newSceneId, await buildSceneData(newSceneId));
 }
 
 // Get current scene
@@ -191,6 +249,8 @@ app.post('/set-scene', async (req, res) => {
       }).finish();
       res.set('Content-Type', 'application/octet-stream');
       res.send(response);
+
+      sendSceneUpdate(uuid, await buildSceneData(uuid));
     } else {
       res.status(404).send(`Scene with ID ${uuid} not found`);
     }

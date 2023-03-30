@@ -63,6 +63,20 @@ service ControlService {
   rpc UpdateCurrentScene(UpdateCurrentSceneRequest) returns (UpdateCurrentSceneResponse);
 }
 
+message AddFixturesToSceneRequest {
+  uint32 sceneId = 1;
+  repeated uint32 fixtureIds = 2;
+}
+
+message AddFixturesToSceneResponse {
+}
+
+message RemoveAllFixturesFromSceneRequest {
+  uint32 sceneId = 1;
+}
+
+message RemoveAllFixturesFromSceneResponse {
+}
 // A request for the IDs of all scenes.
 message GetSceneListRequest {}
 
@@ -159,7 +173,7 @@ message CreateSceneResponse {
 // A request to delete a scene.
 message DeleteSceneRequest {
   // The UUID of the scene to delete.
-  int32 uuid = 1;
+  string name = 1;
 }
 
 // A response containing the deleted scene ID.

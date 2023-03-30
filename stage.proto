@@ -64,7 +64,7 @@ service ControlService {
 }
 
 message AddFixturesToSceneRequest {
-  uint32 sceneId = 1;
+  string sceneName = 1;
   repeated uint32 fixtureIds = 2;
 }
 
@@ -173,7 +173,7 @@ message CreateSceneResponse {
 // A request to delete a scene.
 message DeleteSceneRequest {
   // The UUID of the scene to delete.
-  int32 uuid = 1;
+  string name = 1;
 }
 
 // A response containing the deleted scene ID.

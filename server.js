@@ -86,6 +86,16 @@ async function run() {
   const backend = new WebSocket('ws://localhost:8080/api/ws');
   backend.on('error', console.log);
   let universe = new Uint8Array(512);
+
+  function objectToUint8Array(obj) { 
+    const len = Object.keys(obj).length; 
+    const uint8Array = new Uint8Array(len); 
+    for (let i = 0; i < len; i++) { 
+      uint8Array[i] = obj[i]; 
+    } 
+    return uint8Array; 
+  }
+
   //the list that contails fixtures
   // const fixtureList = new Array();
   //channels from left to right 37-40 53-53 55-65 41-44 45-48 66-76 54-54 49-52
@@ -106,9 +116,12 @@ async function run() {
       throw new Error(`Invalid index: ${index}`);
     }
   
+    
     if (values.length !== channelRange.end - channelRange.start + 1) {
+      console.log(`Invalid values length for index ${index}: ${values.length}`,values);
       throw new Error(`Invalid values length for index ${index}: ${values.length}`);
     }
+    
   
     for (let i = 0; i < values.length; i++) {
       universe[channelRange.start + i] = values[i];
@@ -122,11 +135,16 @@ async function run() {
     // await fixturesCollection.insertOne(newFixture);
     // fixtureList.push(newFixtureId)
       const currentSceneId = await getCurrentSceneId(db);
-  const scene = await scenesCollection.findOne({ id: currentSceneId });
-  if (!scene) {
-    return;
-  }
-  scene.stage.fixtures = universe;
+      const scene = await scenesCollection.findOne({ name: currentSceneId });
+      if (!scene) {
+        return;
+      }
+      await scenesCollection.updateOne(
+        { name: currentSceneId },
+        { $set: { stage: {
+          fixtures:universe,
+        } } }
+      );
     return universe;
   }
   function sendBackendMessage(message) {
@@ -179,7 +197,11 @@ async function run() {
     _universe = scene.stage.fixtures;
     return _universe;
   }
-
+// play scene
+app.post('/play-scene', async (req, res) => {
+  const currentSceneId = await getCurrentSceneId(db);
+  sendSceneUpdate(currentSceneId, await buildSceneData(currentSceneId));
+});
 // Get scene list
 app.get('/get-scene-list', async (req, res) => {
   const scenes = await scenesCollection.find().toArray();
@@ -238,7 +260,7 @@ async function setCurrentSceneId(db, newSceneId) {
     );
   }
 
-  //sendSceneSwitch(newSceneId);
+  sendSceneSwitch(newSceneId);
   //sendSceneUpdate(newSceneId, await buildSceneData(newSceneId));
 }
 
@@ -404,8 +426,8 @@ app.post('/delete-scene', async (req, res) => {
 app.post('/create-fixture', async (req, res) => {
   const decodedRequest = req.body;
   const fixtureData = decodedRequest.fixture;
-
-  setLightValues(fixtureData.id,fixtureData.channels);
+  let data = objectToUint8Array(fixtureData.channels);
+  setLightValues(fixtureData.id,data);
 
   const lastFixture = await fixturesCollection.find().sort({ id: -1 }).limit(1).toArray();
   const newFixtureId = lastFixture.length > 0 ? lastFixture[0].id + 1 : 1; // <-- Change here

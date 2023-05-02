@@ -142,26 +142,6 @@ async function run() {
     for (let i = 0; i < values.length; i++) {
       universe[channelRange.start + i] = values[i];
     }
-    // const lastFixture = await fixturesCollection.find().sort({ id: -1 }).limit(1).toArray();
-    // const newFixtureId = lastFixture.length > 0 ? lastFixture[0].id + 1 : 1;
-    // const newFixture = {
-    //   channels: universe,
-    //   id: newFixtureId,
-    // };
-    // await fixturesCollection.insertOne(newFixture);
-    // fixtureList.push(newFixtureId)
-      // const currentSceneId = await getCurrentSceneId(db);
-      // const scene = await scenesCollection.findOne({ name: currentSceneId });
-      // if (!scene) {
-      //   return;
-      // }
-      // await scenesCollection.updateOne(
-      //   { name: currentSceneId },
-      //   { $set: { stage: {
-      //     fixtures:universe,
-      //   } } }
-      // );
-
     return universe;
   }
   function sendBackendMessage(message) {
@@ -178,15 +158,15 @@ async function run() {
   }
 
   function sendSceneUpdate(id, universe) {
-    // const rawScene = {
-    //   id: String(id),
-    //   universe,
-    // };
-    // sendBackendMessage({
-    //   type: 1,
-    //   name: 'SceneUpdate',
-    //   body: backendTypes.SceneUpdateEvent.encode({ scene: rawScene }).finish(),
-    // });
+    const rawScene = {
+      id: String(id),
+      universe,
+    };
+    sendBackendMessage({
+      type: 1,
+      name: 'SceneUpdate',
+      body: backendTypes.SceneUpdateEvent.encode({ scene: rawScene }).finish(),
+    });
   }
 
   function sendSceneSwitch(id) {
@@ -241,35 +221,8 @@ app.post('/add-fixtures-to-scene', async (req, res) => {
     return res.status(404).send(`Scene with ID ${sceneName} not found`);
   }
 
-  // Check if fixture ids are valid
-  // const fixtures = await fixturesCollection.find({ id: { $in: fixtureIds } }).toArray();
-  // if (fixtures.length !== fixtureIds.length) {
-  //   return res.status(400).send('Some fixture ids are invalid');
-  // }
-  // Replace fixtures in the scene
   scene.stage.fixtures = universe;
-
-  // Add fixtures to scene
-  // const updatedScene = await scenesCollection.updateOne(
-  //   { id: sceneId },
-  //   { $addToSet: { 'stage.fixtures': { $each: fixtureIds } } }
-  // );
-
-  // const response = protoTypes.AddFixturesToSceneResponse.encode({}).finish();
-  // res.set('Content-Type', 'application/octet-stream');
-  // res.send(response);
 });
-// Get scene list
-// app.get('/get-scene-list', async (req, res) => {
-//   const scenes = await scenesCollection.find().toArray();
-//   const response = protoTypes.GetSceneListResponse.encode({
-//     scenes: scenes.map((scene) => ({ name: scene.name.toString() })),
-//   }).finish();
-  
-
-//   res.set('Content-Type', 'application/octet-stream');
-//   res.send(response);
-// });
 // Get scene list
 app.get('/get-scene-list', async (req, res) => {
   const scenes = await scenesCollection.find().toArray();
@@ -327,7 +280,6 @@ async function setCurrentSceneId(db, newSceneId) {
   }
 
   sendSceneSwitch(newSceneId);
-  //sendSceneUpdate(newSceneId, await buildSceneData(newSceneId));
 }
 
 // Get current scene
@@ -494,16 +446,6 @@ app.get('/create-fixture', async (req, res) => {
     } } }
   );
   universe = emptyUniverse;
-
-  // const lastFixture = await fixturesCollection.find().sort({ id: -1 }).limit(1).toArray();
-  // const newFixtureId = lastFixture.length > 0 ? lastFixture[0].id + 1 : 1; // <-- Change here
-  // const newFixture = {
-  //   id: newFixtureId,
-  // };
-
-  // const response = protoTypes.CreateFixtureResponse.encode({ fixture: newFixture }).finish();
-  // res.set('Content-Type', 'application/octet-stream');
-  // res.send(response);
 });
 // Delete a fixture
 app.post('/delete-fixture', async (req, res) => {

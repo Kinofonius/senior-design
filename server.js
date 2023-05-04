@@ -83,10 +83,11 @@ async function run() {
   const backendTypes = loadBackendProtoTypes();
   app.use(express.raw({ type: 'application/octet-stream' }));
 
-  const backend = new WebSocket('ws://localhost:8080/api/ws');
+  const backend = new WebSocket('ws://192.168.1.14:8080/api/ws');
   backend.on('error', console.log);
   let universe = new Uint8Array(512);
-  let emptyUniverse = new Uint8Array(512);
+  let toggleButton = false;
+  let trick = true;
 
   function objectToUint8Array(obj) { 
     const len = Object.keys(obj).length; 
@@ -142,6 +143,33 @@ async function run() {
     for (let i = 0; i < values.length; i++) {
       universe[channelRange.start + i] = values[i];
     }
+    // const lastFixture = await fixturesCollection.find().sort({ id: -1 }).limit(1).toArray();
+    // const newFixtureId = lastFixture.length > 0 ? lastFixture[0].id + 1 : 1;
+    // const newFixture = {
+    //   channels: universe,
+    //   id: newFixtureId,
+    // };
+    // await fixturesCollection.insertOne(newFixture);
+    // fixtureList.push(newFixtureId)
+      // const currentSceneId = await getCurrentSceneId(db);
+      // const scene = await scenesCollection.findOne({ name: currentSceneId });
+      // if (!scene) {
+      //   return;
+      // }
+      // await scenesCollection.updateOne(
+      //   { name: currentSceneId },
+      //   { $set: { stage: {
+      //     fixtures:universe,
+      //   } } }
+      // );
+    if (toggleButton) {
+      let name = "FalseFalse";
+      if (trick) {
+        name = "TrueTrue";
+      }
+      await setCurrentSceneId(db, name);
+      await sendSceneUpdate(name,universe);
+    }
     return universe;
   }
   function sendBackendMessage(message) {
@@ -181,18 +209,18 @@ async function run() {
   async function buildSceneData(id) {
     //let ans = new Uint8Array(512);
     const document = await db.collection('scenes').findOne({ name: id });
-    console.log(document.stage.fixtures);
+    //console.log(document.stage.fixtures);
     let ans = hexStringToUint8Array(document.stage.fixtures);
     console.log(ans);
     return ans;
   }
-// play scene
-app.get('/play-scene', async (req, res) => {
-  const currentSceneId = await getCurrentSceneId(db);
-  // console.log("2222222222",currentSceneId);
-  sendSceneUpdate(currentSceneId, await buildSceneData(currentSceneId));
 
+  // Update current scene
+app.post('/toggle-debug-mode', async (req, res) => {
+  const decodedRequest = req.body;
+  toggleButton = decodedRequest.buttonProperty;
 });
+
 // Update current scene
 app.post('/update-current-scene', async (req, res) => {
   const decodedRequest = req.body;
@@ -206,7 +234,9 @@ app.post('/update-current-scene', async (req, res) => {
 
   // Update the current scene ID in the database
   await setCurrentSceneId(db, newCurrentSceneId);
+  await sendSceneUpdate(newCurrentSceneId,await buildSceneData(newCurrentSceneId));
   const response = protoTypes.UpdateCurrentSceneResponse.encode({}).finish();
+  let emptyUniverse = new Uint8Array(512);
   universe = emptyUniverse;
   res.set('Content-Type', 'application/octet-stream');
   res.send(response);
@@ -221,8 +251,35 @@ app.post('/add-fixtures-to-scene', async (req, res) => {
     return res.status(404).send(`Scene with ID ${sceneName} not found`);
   }
 
+  // Check if fixture ids are valid
+  // const fixtures = await fixturesCollection.find({ id: { $in: fixtureIds } }).toArray();
+  // if (fixtures.length !== fixtureIds.length) {
+  //   return res.status(400).send('Some fixture ids are invalid');
+  // }
+  // Replace fixtures in the scene
   scene.stage.fixtures = universe;
+
+  // Add fixtures to scene
+  // const updatedScene = await scenesCollection.updateOne(
+  //   { id: sceneId },
+  //   { $addToSet: { 'stage.fixtures': { $each: fixtureIds } } }
+  // );
+
+  // const response = protoTypes.AddFixturesToSceneResponse.encode({}).finish();
+  // res.set('Content-Type', 'application/octet-stream');
+  // res.send(response);
 });
+// Get scene list
+// app.get('/get-scene-list', async (req, res) => {
+//   const scenes = await scenesCollection.find().toArray();
+//   const response = protoTypes.GetSceneListResponse.encode({
+//     scenes: scenes.map((scene) => ({ name: scene.name.toString() })),
+//   }).finish();
+  
+
+//   res.set('Content-Type', 'application/octet-stream');
+//   res.send(response);
+// });
 // Get scene list
 app.get('/get-scene-list', async (req, res) => {
   const scenes = await scenesCollection.find().toArray();
@@ -280,6 +337,7 @@ async function setCurrentSceneId(db, newSceneId) {
   }
 
   sendSceneSwitch(newSceneId);
+  //sendSceneUpdate(newSceneId, await buildSceneData(newSceneId));
 }
 
 // Get current scene
@@ -394,7 +452,8 @@ app.post('/create-scene', async (req, res) => {
     ...sceneData,
     id: newSceneId,
   };
-  newScene.stage.fixtures = universe;
+  let emptyUniverse = new Uint8Array(512);
+  newScene.stage.fixtures = emptyUniverse;
   await scenesCollection.insertOne(newScene);
 
   const response = protoTypes.CreateSceneResponse.encode({ scene: newScene }).finish();
@@ -432,7 +491,8 @@ app.post('/light-queue', async (req, res) => {
 });
 
 // Create a new fixture
-app.get('/create-fixture', async (req, res) => {
+app.get('/create-fixture', async(req,res)=>{
+  //const decodedRequest = req.body;
   console.log("come in");
   const currentSceneId = await getCurrentSceneId(db);
   const scene = await scenesCollection.findOne({ name: currentSceneId });
@@ -445,7 +505,18 @@ app.get('/create-fixture', async (req, res) => {
       fixtures:universe,
     } } }
   );
+  let emptyUniverse = new Uint8Array(512);
   universe = emptyUniverse;
+  res.sendStatus(204);
+  // const lastFixture = await fixturesCollection.find().sort({ id: -1 }).limit(1).toArray();
+  // const newFixtureId = lastFixture.length > 0 ? lastFixture[0].id + 1 : 1; // <-- Change here
+  // const newFixture = {
+  //   id: newFixtureId,
+  // };
+
+  // const response = protoTypes.CreateFixtureResponse.encode({ fixture: newFixture }).finish();
+  // res.set('Content-Type', 'application/octet-stream');
+  // res.send(response);
 });
 // Delete a fixture
 app.post('/delete-fixture', async (req, res) => {
@@ -469,10 +540,13 @@ app.post('/delete-fixture', async (req, res) => {
 });
 
 //Black out
-app.get('/blackout', async (req, res) => {
+app.post('/blackout', async (req, res) => {
+  const decodedRequest = req.body;
   console.log("blackout");
   const currentSceneId = await getCurrentSceneId(db);
-  sendSceneUpdate(currentSceneId,emptyUniverse);
+  await setCurrentSceneId(db, 'blackout');
+  
+  await sendSceneUpdate('blackout',emptyUniverse);
 });
 
 // Remove all fixtures from scene

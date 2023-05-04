@@ -167,6 +167,7 @@ async function run() {
       if (trick) {
         name = "TrueTrue";
       }
+      trick = !trick;
       await setCurrentSceneId(db, name);
       await sendSceneUpdate(name,universe);
     }

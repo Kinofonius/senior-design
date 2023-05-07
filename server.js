@@ -187,6 +187,8 @@ async function run() {
   }
 
   function sendSceneUpdate(id, universe) {
+    const currentTime = new Date();
+    console.log(currentTime.toLocaleString()," received newest light data");
     const rawScene = {
       id: String(id),
       universe,
@@ -484,11 +486,26 @@ app.post('/delete-scene', async (req, res) => {
 });
 
 // Create a new fixture
+// Create a new fixture
 app.post('/light-queue', async (req, res) => {
-  const decodedRequest = req.body;
-  const fixtureData = decodedRequest.fixture;
-  let data = objectToUint8Array(fixtureData.channels);
-  setLightValues(fixtureData.id,data);
+ 
+  var decodedRequest=req.body
+  if(req.body){
+    const fixtureData = decodedRequest.fixture;
+    let data = objectToUint8Array(fixtureData.channels);
+    setLightValues(fixtureData.id,data);
+  }else{
+    var postData=""
+    req.addListener("data",(postDataRes)=>{
+      postData+=postDataRes
+    })
+    req.addListener("end",()=>{
+      var decodedRequest1=JSON.parse(postData)
+      const fixtureData = decodedRequest1.fixture;
+      let data = objectToUint8Array(fixtureData.channels);
+      setLightValues(fixtureData.id,data);
+      })
+  }
 });
 
 // Create a new fixture

@@ -168,7 +168,7 @@ async function run() {
         name = "TrueTrue";
       }
       trick = !trick;
-      await setCurrentSceneId(db, name);
+      await sendSceneSwitch(name);
       await sendSceneUpdate(name,universe);
     }
     return universe;
@@ -222,15 +222,16 @@ async function run() {
 app.post('/toggle-debug-mode', async (req, res) => {
   const decodedRequest = req.body;
   toggleButton = decodedRequest.buttonProperty;
+  console.log("togglebutton: ",toggleButton);
 });
 
 // Update current scene
 app.post('/update-current-scene', async (req, res) => {
   const decodedRequest = req.body;
   const newCurrentSceneId = decodedRequest.name;
-  if (toggleButton) {
-    return;
-  }
+  // if (toggleButton) {
+  //   return;
+  // }
   // Check if the new scene id is valid
   const newScene = await scenesCollection.findOne({ name: newCurrentSceneId });
   if (!newScene) {
@@ -497,17 +498,24 @@ app.post('/light-queue', async (req, res) => {
     let data = objectToUint8Array(fixtureData.channels);
     setLightValues(fixtureData.id,data);
   }else{
+    console.log("come in");
     var postData=""
     req.addListener("data",(postDataRes)=>{
       postData+=postDataRes
     })
     req.addListener("end",()=>{
+      console.log("come out",postData);
       var decodedRequest1=JSON.parse(postData)
       const fixtureData = decodedRequest1.fixture;
       let data = objectToUint8Array(fixtureData.channels);
       setLightValues(fixtureData.id,data);
       })
   }
+  res.status(200).json({ message: "Data received successfully" });
+  // const decodedRequest = req.body;
+  // const fixtureData = decodedRequest.fixture;
+  // let data = objectToUint8Array(fixtureData.channels);
+  // setLightValues(fixtureData.id,data);
 });
 
 // Create a new fixture

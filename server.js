@@ -228,7 +228,9 @@ app.post('/toggle-debug-mode', async (req, res) => {
 app.post('/update-current-scene', async (req, res) => {
   const decodedRequest = req.body;
   const newCurrentSceneId = decodedRequest.name;
-
+  if (toggleButton) {
+    return;
+  }
   // Check if the new scene id is valid
   const newScene = await scenesCollection.findOne({ name: newCurrentSceneId });
   if (!newScene) {
